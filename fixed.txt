@@ -1,0 +1,10 @@
+                </Box>
+              )}
+            </Box>
+          </AccordionDetails>
+      </Paper>
+    );
+  };
+
+  // Main component return
+  return (

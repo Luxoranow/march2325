@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Safari-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* CSS specific to iOS devices */ 
+  html, body {
+    -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Fix for flexbox issues in Safari */
+  .MuiGrid-container {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+  }
+  
+  /* Fix Safari overflow issues */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix for sticky positioning in Safari */
+  .MuiAppBar-positionSticky {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+  }
+  
+  /* Fix for input fields in Safari */
+  input, textarea {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+  
+  /* Fix for Safari drawer issues */
+  .MuiDrawer-paper {
+    -webkit-overflow-scrolling: touch;
+  }
+}

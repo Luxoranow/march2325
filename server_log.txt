@@ -1,0 +1,64 @@
+
+> luxora-mpv-16@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.2.1
+   - Local:        http://localhost:3000
+   - Network:      http://10.0.0.193:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 981ms
+ ✓ Compiled /middleware in 234ms (101 modules)
+=== Environment Variables Check ===
+NEXT_PUBLIC_SUPABASE_URL: Available
+NEXT_PUBLIC_SUPABASE_ANON_KEY: Available
+SUPABASE_SERVICE_ROLE_KEY: MISSING
+================================
+ ○ Compiling /dashboard/cards/new ...
+ ⨯ ./app/dashboard/cards/new/page.tsx:5:1
+Module not found: Can't resolve '../../../../components/ui/button'
+  3 | import { useState, useEffect } from 'react';
+  4 | import { useRouter } from 'next/navigation';
+> 5 | import { Button } from '../../../../components/ui/button';
+    | ^
+  6 | import CardEditor from '../../../../components/editor/CardEditor';
+  7 |
+  8 | export default function NewCardPage() {
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/dashboard/cards/new/page.tsx:5:1
+Module not found: Can't resolve '../../../../components/ui/button'
+  3 | import { useState, useEffect } from 'react';
+  4 | import { useRouter } from 'next/navigation';
+> 5 | import { Button } from '../../../../components/ui/button';
+    | ^
+  6 | import CardEditor from '../../../../components/editor/CardEditor';
+  7 |
+  8 | export default function NewCardPage() {
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/dashboard/cards/new/page.tsx:5:1
+Module not found: Can't resolve '../../../../components/ui/button'
+  3 | import { useState, useEffect } from 'react';
+  4 | import { useRouter } from 'next/navigation';
+> 5 | import { Button } from '../../../../components/ui/button';
+    | ^
+  6 | import CardEditor from '../../../../components/editor/CardEditor';
+  7 |
+  8 | export default function NewCardPage() {
+
+https://nextjs.org/docs/messages/module-not-found
+ GET /dashboard/cards/new 500 in 48599ms
+ ⨯ ./app/dashboard/cards/new/page.tsx:5:1
+Module not found: Can't resolve '../../../../components/ui/button'
+  3 | import { useState, useEffect } from 'react';
+  4 | import { useRouter } from 'next/navigation';
+> 5 | import { Button } from '../../../../components/ui/button';
+    | ^
+  6 | import CardEditor from '../../../../components/editor/CardEditor';
+  7 |
+  8 | export default function NewCardPage() {
+
+https://nextjs.org/docs/messages/module-not-found
+ ✓ Compiled /_error in 7.8s (2267 modules)

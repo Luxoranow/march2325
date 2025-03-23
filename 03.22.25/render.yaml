@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: luxora
+    env: node
+    runtime: node
+    rootDir: .
+    buildCommand: node render-entrypoint.js && cd /opt/render/project/src && npm install && npm run build
+    startCommand: cd /opt/render/project/src && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://luxora-frse.onrender.com
+      # Add these in the dashboard, don't commit secrets to git
+      # - key: NEXT_PUBLIC_SUPABASE_URL
+      #   sync: false
+      # - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+      #   sync: false
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false 

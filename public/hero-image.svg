@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="500" height="400" viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background card -->
+  <rect x="100" y="50" width="300" height="300" rx="8" ry="8" fill="#ffffff" stroke="#000000" stroke-width="2" />
+  
+  <!-- QR code simplified representation -->
+  <rect x="175" y="100" width="150" height="150" fill="#f5f5f5" stroke="#000000" stroke-width="1" />
+  <rect x="195" y="120" width="30" height="30" fill="#000000" />
+  <rect x="195" y="200" width="30" height="30" fill="#000000" />
+  <rect x="275" y="120" width="30" height="30" fill="#000000" />
+  <rect x="235" y="160" width="30" height="30" fill="#000000" />
+  <rect x="195" y="160" width="30" height="30" fill="#000000" />
+  <rect x="275" y="160" width="30" height="30" fill="#000000" />
+  <rect x="235" y="200" width="30" height="30" fill="#000000" />
+  <rect x="275" y="200" width="30" height="30" fill="#000000" />
+  
+  <!-- Contact details -->
+  <rect x="175" y="270" width="150" height="20" rx="2" ry="2" fill="#f0f0f0" />
+  <rect x="175" y="300" width="150" height="20" rx="2" ry="2" fill="#f0f0f0" />
+  
+  <!-- Decorative elements -->
+  <circle cx="150" cy="80" r="10" fill="#000000" />
+  <circle cx="350" cy="80" r="10" fill="#000000" />
+  <circle cx="150" cy="320" r="10" fill="#000000" />
+  <circle cx="350" cy="320" r="10" fill="#000000" />
+  
+  <!-- Luxora logo simplified -->
+  <text x="250" y="60" font-family="Arial" font-size="18" text-anchor="middle" font-weight="bold">LUXORA</text>
+</svg> 

@@ -1,0 +1,11 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /api/
+
+# Host
+Host: https://luxora.io
+
+# Sitemaps
+Sitemap: https://luxora.io/sitemap.xml
