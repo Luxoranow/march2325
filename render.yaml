@@ -2,8 +2,10 @@ services:
   - type: web
     name: luxora
     env: node
-    buildCommand: sh ./build.sh
-    startCommand: sh ./start.sh
+    runtime: node
+    rootDir: .
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
