@@ -2,7 +2,7 @@ services:
   - type: web
     name: luxora
     env: node
-    buildCommand: bash ./build.sh
+    buildCommand: bash ./render-deploy.sh
     startCommand: npm start
     envVars:
       - key: NODE_ENV
