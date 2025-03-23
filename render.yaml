@@ -4,8 +4,8 @@ services:
     env: node
     runtime: node
     rootDir: .
-    buildCommand: node render-entrypoint.js && npm install && npm run build
-    startCommand: npm start
+    buildCommand: node render-entrypoint.js && cd /opt/render/project/src && npm install && npm run build
+    startCommand: cd /opt/render/project/src && npm start
     envVars:
       - key: NODE_ENV
         value: production

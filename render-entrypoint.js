@@ -35,15 +35,40 @@ if (currentDir !== renderDir) {
     }
   }
   
-  // Copy package.json to the Render directory
-  if (fs.existsSync(packagePath)) {
-    try {
-      console.log(`Copying package.json to ${renderDir}`);
-      fs.copyFileSync(packagePath, path.join(renderDir, 'package.json'));
-      console.log('package.json copied successfully');
-    } catch (error) {
-      console.error('Error copying package.json:', error.message);
-    }
+  // Copy the entire project to the Render directory
+  console.log(`Copying entire project to ${renderDir}`);
+  try {
+    // Using shell commands for more reliable copying
+    execSync(`cp -r ${currentDir}/* ${renderDir}/`);
+    // Try to copy hidden files too
+    execSync(`cp -r ${currentDir}/.* ${renderDir}/`).toString();
+  } catch (error) {
+    // Ignore errors from copying dot files (like .. and .)
+    console.log('Note: Errors copying dot files are normal and can be ignored');
+  }
+  
+  // Verify package.json was copied
+  if (fs.existsSync(path.join(renderDir, 'package.json'))) {
+    console.log('Successfully copied package.json to Render directory');
+  } else {
+    console.error('Failed to copy package.json to Render directory');
+  }
+  
+  // Log directory contents
+  console.log('Contents of Render directory:');
+  try {
+    const output = execSync(`ls -la ${renderDir}`).toString();
+    console.log(output);
+  } catch (error) {
+    console.error('Error listing Render directory:', error.message);
+  }
+  
+  // Change to the Render directory to continue build there
+  try {
+    process.chdir(renderDir);
+    console.log(`Successfully changed to directory: ${process.cwd()}`);
+  } catch (error) {
+    console.error('Error changing directory:', error.message);
   }
 }
 
