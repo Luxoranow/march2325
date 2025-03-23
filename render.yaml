@@ -2,7 +2,7 @@ services:
   - type: web
     name: luxora
     env: node
-    buildCommand: bash ./render-deploy.sh
+    buildCommand: node test.js || echo "Diagnostic completed" && cd $(find . -name "package.json" | head -1 | xargs dirname) && npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
