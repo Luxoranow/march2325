@@ -1,6 +1,6 @@
 {
-  "name": "luxora-mpv-16",
-  "version": "0.1.0",
+  "name": "luxora-unified",
+  "version": "0.2.0",
   "private": true,
   "engines": {
     "node": ">=20.0.0"
@@ -12,7 +12,11 @@
     "lint": "next lint",
     "analyze": "ANALYZE=true next build",
     "postbuild": "next-sitemap || echo 'Sitemap generation skipped'",
-    "render-build": "next build && npx next-sitemap"
+    "render-build": "next build && npx next-sitemap",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel",
+    "validate": "npm run lint && tsc --noEmit",
+    "db:setup": "echo 'This will help you set up the database. Please follow instructions in the README.md file.'"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -24,11 +28,15 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "@types/uuid": "^10.0.0",
+    "google-auth-library": "^9.7.0",
+    "jwt-simple": "^0.5.6",
     "next": "15.2.1",
     "next-sitemap": "^4.2.3",
+    "passkit-generator": "^3.1.11",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-toastify": "^11.0.5",
     "recharts": "^2.7.0",
     "stripe": "^17.7.0",
     "uuid": "^11.1.0"

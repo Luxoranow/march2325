@@ -59,6 +59,7 @@ import FaxIcon from '@mui/icons-material/Print';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 // Define smaller font sizes for the editor
 const editorStyles = {
@@ -292,6 +293,10 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
   const [userId, setUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [showSchemaAlert, setShowSchemaAlert] = useState(false);
   
   // Use a separate useEffect for client-side only code
   useEffect(() => {
@@ -300,26 +305,53 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
     // Check authentication status
     const checkAuth = async () => {
       try {
+        console.log('Checking authentication status...');
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
           console.error('Auth check error:', error);
           // In production, redirect to login page if not authenticated
           if (process.env.NODE_ENV === 'production') {
-            router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
+            // Save current path to redirect back after login
+            const currentPath = window.location.pathname;
+            localStorage.setItem('luxora_redirect_after_login', currentPath);
+            router.push('/login?redirect=' + encodeURIComponent(currentPath));
             return;
           } else {
             // Only in development, use a default test user ID
+            console.log('Using default test ID in development mode');
             setUserId(DEFAULT_TEST_USER_ID);
           }
         } else if (user) {
           console.log('User authenticated:', user.id);
           setUserId(user.id);
+          
+          // Also test if this user can access the cards table
+          try {
+            const { error: tableError } = await supabase
+              .from('cards')
+              .select('count')
+              .limit(1);
+              
+            if (tableError) {
+              console.error('Table access error:', tableError);
+              // If in development, fallback to test user ID
+              if (process.env.NODE_ENV !== 'production') {
+                console.log('Falling back to test user ID due to table access error');
+                setUserId(DEFAULT_TEST_USER_ID);
+              }
+            }
+          } catch (e) {
+            console.error('Error testing table access:', e);
+          }
         } else {
           console.log('No authenticated user');
           // In production, redirect to login page if not authenticated
           if (process.env.NODE_ENV === 'production') {
-            router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
+            // Save current path to redirect back after login
+            const currentPath = window.location.pathname;
+            localStorage.setItem('luxora_redirect_after_login', currentPath);
+            router.push('/login?redirect=' + encodeURIComponent(currentPath));
             return;
           } else {
             // Only in development, use a default test user ID
@@ -332,7 +364,10 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
         
         // In production, redirect to login page if not authenticated
         if (process.env.NODE_ENV === 'production') {
-          router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
+          // Save current path to redirect back after login
+          const currentPath = window.location.pathname;
+          localStorage.setItem('luxora_redirect_after_login', currentPath);
+          router.push('/login?redirect=' + encodeURIComponent(currentPath));
           return;
         } else {
           // Only in development, use a default test user ID
@@ -351,6 +386,8 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
         
         if (error) {
           console.error('Supabase connection test failed:', error);
+          // Show a user-friendly error message
+          alert('We could not connect to the database. Please check your internet connection and try again.');
         } else {
           console.log('Supabase connection test successful:', data);
         }
@@ -388,9 +425,6 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
 
   // State for expanded accordion sections
   const [expanded, setExpanded] = useState<string | false>('personal');
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState(false);
   const [typingEffect, setTypingEffect] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrHovered, setQrHovered] = useState(false);
@@ -407,6 +441,32 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
       return () => clearTimeout(timer);
     }
   }, [mounted]);
+  
+  // Add a check for database schema issues
+  useEffect(() => {
+    // Only run this after authentication is checked
+    if (authChecked && userId && mounted) {
+      const checkDatabaseSchema = async () => {
+        try {
+          // Test if we can access the cards table with all expected columns
+          const { data, error } = await supabase
+            .from('cards')
+            .select('is_template')
+            .limit(1);
+            
+          if (error && error.message.includes("column")) {
+            console.error('Database schema issue detected:', error.message);
+            setShowSchemaAlert(true);
+          }
+        } catch (err) {
+          console.warn('Error checking schema:', err);
+          // Don't show alert on general errors
+        }
+      };
+      
+      checkDatabaseSchema();
+    }
+  }, [authChecked, userId, mounted]);
 
   // Handle accordion expansion
   const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
@@ -824,6 +884,19 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
       // Always save to localStorage as a backup
       saveCardToLocalStorage(cardData);
       
+      // Check authentication status first
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      if (authError) {
+        console.error('Authentication error:', authError);
+        // Try silent re-authentication
+        try {
+          await supabase.auth.refreshSession();
+          console.log('Session refreshed successfully');
+        } catch (refreshError) {
+          console.error('Session refresh failed:', refreshError);
+        }
+      }
+      
       // Use the userId from state (which might be the default test ID)
       if (!userId) {
         console.error('No user ID available');
@@ -831,6 +904,8 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
         alert('Authentication error: No user ID available.\nYour card has been backed up locally.');
         return;
       }
+      
+      console.log('Using user ID:', userId);
       
       // Create a card name from the personal name or a default
       const cardName = isMasterTemplate 
@@ -843,117 +918,201 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
       const sanitizedCardData = sanitizeCardData(cardData);
       console.log('Sanitized card data:', sanitizedCardData);
       
-      // Try to save directly with Supabase client instead of using the API
-      // This will work with the anon key for the current authenticated user
-      let result;
+      // Try saving with direct Supabase access first
+      let directSaveSuccess = false;
+      let directSaveError = null;
+      let savedData = null;
       
-      // Prepare the record for Supabase
-      const cardRecord = {
-        user_id: userId,
-        name: cardName,
-        data: sanitizedCardData,
-        updated_at: new Date().toISOString(),
-        is_template: isMasterTemplate
-      };
-      
-      if (isMasterTemplate) {
-        // For master template, check if one already exists
-        const { data: existingTemplate, error: fetchError } = await supabase
+      try {
+        // First test if we can access the cards table
+        console.log('Testing database access...');
+        const { error: testError } = await supabase
           .from('cards')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_template', true)
+          .select('count')
           .limit(1);
-          
-        if (fetchError) {
-          console.error('Error checking for existing template:', fetchError);
-          setSaveError(true);
-          alert(`Error checking for existing template: ${fetchError.message}`);
-          return;
-        }
         
-        // Check if we have any templates and if so, use the first one's ID
-        if (existingTemplate && existingTemplate.length > 0) {
-          // Update existing template
-          const templateId = existingTemplate[0]?.id;
-          if (templateId) {
-            console.log('Updating existing master template with ID:', templateId);
+        if (testError) {
+          console.error('Database access test failed:', testError);
+          directSaveError = testError;
+        } else {
+          console.log('Database access test successful, proceeding with save');
+          
+          // Prepare the record for Supabase
+          const cardRecord = {
+            user_id: userId,
+            name: cardName,
+            data: sanitizedCardData,
+            updated_at: new Date().toISOString(),
+            is_template: isMasterTemplate
+          };
+          
+          // Log the record we're about to save
+          console.log('Saving card record:', cardRecord);
+          
+          let result;
+          
+          if (isMasterTemplate) {
+            // For master template, check if one already exists
+            const { data: existingTemplate, error: fetchError } = await supabase
+              .from('cards')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('is_template', true)
+              .limit(1);
+              
+            if (fetchError) {
+              console.error('Error checking for existing template:', fetchError);
+              directSaveError = fetchError;
+            } else {
+              // Check if we have any templates and if so, use the first one's ID
+              if (existingTemplate && existingTemplate.length > 0) {
+                // Update existing template
+                const templateId = existingTemplate[0]?.id;
+                if (templateId) {
+                  console.log('Updating existing master template with ID:', templateId);
+                  result = await supabase
+                    .from('cards')
+                    .update(cardRecord)
+                    .eq('id', templateId)
+                    .select();
+                } else {
+                  // Fallback to insert if somehow we got an invalid ID
+                  console.log('Creating new master template (fallback)');
+                  result = await supabase
+                    .from('cards')
+                    .insert(cardRecord)
+                    .select();
+                }
+              } else {
+                // Create new template
+                console.log('Creating new master template');
+                result = await supabase
+                  .from('cards')
+                  .insert(cardRecord)
+                  .select();
+              }
+            }
+          } else if (cardData.id) {
+            // Update existing card
+            console.log('Updating existing card with ID:', cardData.id);
             result = await supabase
               .from('cards')
               .update(cardRecord)
-              .eq('id', templateId)
+              .eq('id', cardData.id)
               .select();
           } else {
-            // Fallback to insert if somehow we got an invalid ID
-            console.log('Creating new master template (fallback)');
+            // Insert new card
+            console.log('Creating new card');
             result = await supabase
               .from('cards')
               .insert(cardRecord)
               .select();
           }
-        } else {
-          // Create new template
-          console.log('Creating new master template');
-          result = await supabase
-            .from('cards')
-            .insert(cardRecord)
-            .select();
+          
+          if (result) {
+            const { data, error } = result;
+            
+            if (error) {
+              console.error('Error saving card with direct access:', error);
+              directSaveError = error;
+            } else {
+              console.log('Card saved successfully with direct access:', data);
+              directSaveSuccess = true;
+              savedData = data;
+            }
+          }
         }
-      } else if (cardData.id) {
-        // Update existing card
-        console.log('Updating existing card with ID:', cardData.id);
-        result = await supabase
-          .from('cards')
-          .update(cardRecord)
-          .eq('id', cardData.id)
-          .select();
-      } else {
-        // Insert new card
-        console.log('Creating new card');
-        result = await supabase
-          .from('cards')
-          .insert(cardRecord)
-          .select();
+      } catch (directError) {
+        console.error('Exception during direct save:', directError);
+        directSaveError = directError;
       }
       
-      const { data, error } = result;
-      
-      if (error) {
-        console.error('Error saving card:', error);
-        
-        // Check for specific error types
-        if (error.code === '42P01') {
-          alert('Error: Database table "cards" not found. Please make sure you have created the necessary tables in your Supabase project.');
-        } else if (error.code === '42501' || (error.message && error.message.includes('permission denied'))) {
-          alert('Error: Permission denied. Make sure you have the correct Row Level Security (RLS) policies set up in your Supabase project.');
-        } else {
-          // Safely extract error message or provide a fallback
-          const errorMessage = error.message || (typeof error === 'string' ? error : 'Unknown error');
+      // If direct save failed, try using the API route
+      if (!directSaveSuccess) {
+        console.log('Direct save failed, trying API route fallback');
+        try {
+          // Prepare API payload
+          const apiPayload = {
+            user_id: userId,
+            name: cardName,
+            data: sanitizedCardData,
+            id: cardData.id, // Include if updating existing card
+            is_template: isMasterTemplate
+          };
+          
+          // Call the API route
+          const response = await fetch('/api/cards', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(apiPayload),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API route save failed:', errorText);
+            throw new Error(`API save failed: ${errorText}`);
+          }
+          
+          const result = await response.json();
+          console.log('Card saved successfully via API route:', result);
+          
+          // Use the data from the API response
+          savedData = result.data;
+          directSaveSuccess = true;
+        } catch (apiError) {
+          console.error('API route save failed with exception:', apiError);
+          
+          // If both direct and API save failed, show error and return
+          console.error('All save methods failed');
+          setSaveError(true);
+          
+          let errorMessage = 'Unknown error';
+          if (directSaveError) {
+            // Check for specific error types from direct save attempt
+            if (typeof directSaveError === 'object' && directSaveError !== null) {
+              const err = directSaveError as any; // Use type assertion for flexibility
+              if (err.code === '42P01') {
+                errorMessage = 'Database table "cards" not found. Please make sure you have created the necessary tables in your Supabase project.';
+              } else if (err.code === '42501' || (err.message && err.message.includes('permission denied'))) {
+                errorMessage = 'Permission denied. Make sure you have the correct Row Level Security (RLS) policies set up in your Supabase project.';
+              } else {
+                // Safely extract error message or provide a fallback
+                errorMessage = err.message || (typeof directSaveError === 'string' ? directSaveError : 'Unknown error');
+              }
+            }
+          } else if (apiError instanceof Error) {
+            errorMessage = apiError.message;
+          }
+          
           alert(`Error saving card: ${errorMessage}\n\nYour card has been backed up locally.`);
+          return;
+        }
+      }
+      
+      // If we successfully saved the card
+      if (directSaveSuccess && savedData) {
+        // Update the card data with the returned ID if it's a new card
+        if (savedData && savedData.length > 0 && !cardData.id) {
+          console.log('Updating state with new card ID:', savedData[0].id);
+          setCardData({
+            ...cardData,
+            id: savedData[0].id
+          } as CardData);
         }
         
+        setSaveSuccess(true);
+        
+        // Reset success message after 3 seconds
+        setTimeout(() => {
+          setSaveSuccess(false);
+        }, 3000);
+      } else {
+        // This should never happen, but just in case
         setSaveError(true);
-        return;
+        alert('Unknown error occurred during save. Your card has been backed up locally.');
       }
-      
-      console.log('Card saved successfully:', data);
-      
-      // Update the card data with the returned ID if it's a new card
-      if (data && data.length > 0 && !cardData.id) {
-        console.log('Updating state with new card ID:', data[0].id);
-        setCardData({
-          ...cardData,
-          id: data[0].id
-        } as CardData);
-      }
-      
-      setSaveSuccess(true);
-      
-      // Reset success message after 3 seconds
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 3000);
-      
     } catch (error) {
       console.error('Error saving card:', error);
       
@@ -987,6 +1146,62 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
       setSaveError(true);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Add a function to handle wallet pass generation
+  const addToWallet = async () => {
+    // Card must be saved first to have an ID
+    if (!cardData.id) {
+      toast.warning('Please save your card first before adding to wallet.', {
+        position: 'bottom-center'
+      });
+      return;
+    }
+
+    try {
+      // Request the wallet pass from the API
+      const response = await fetch('/api/passes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cardData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate wallet pass');
+      }
+
+      // Check if the response is JSON (Google) or binary (Apple)
+      const contentType = response.headers.get('Content-Type');
+      
+      if (contentType?.includes('application/json')) {
+        // Google Wallet - Get the URL and redirect
+        const data = await response.json();
+        window.open(data.saveUrl, '_blank');
+      } else {
+        // Apple Wallet - Download the .pkpass file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${cardData.personal.name.replace(/\s+/g, '-').toLowerCase()}-business-card.pkpass`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+
+      toast.success('Wallet pass created successfully!', {
+        position: 'bottom-center'
+      });
+    } catch (error: any) {
+      console.error('Error adding to wallet:', error);
+      toast.error(`Unable to add to wallet: ${error.message}`, {
+        position: 'bottom-center'
+      });
     }
   };
 
@@ -1425,6 +1640,7 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
             variant="outlined"
             size="small"
             startIcon={<DownloadIcon fontSize="small" />}
+            onClick={addToWallet}
             sx={{ 
               borderRadius: 0,
               border: `1px solid ${theme.primary}`,
@@ -1444,6 +1660,75 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
           >
             ADD TO WALLET
           </Button>
+        </Box>
+        
+        {/* Prominent QR Code Display - Added at the top */}
+        <Box sx={{ 
+          mb: 3,
+          p: 2,
+          border: `1px solid ${theme.primary}`,
+          backgroundColor: '#ffffff',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          position: 'relative',
+        }}>
+          <Typography 
+            variant="subtitle2"
+            gutterBottom
+            sx={{ 
+              fontWeight: 'bold',
+              fontFamily: 'monospace',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: theme.primary,
+              borderBottom: `1px solid ${theme.primary}`,
+              pb: 0.5,
+              mb: 2,
+              fontSize: '0.8rem',
+              textAlign: 'center',
+              width: '100%'
+            }}
+          >
+            SCAN MY CARD
+          </Typography>
+          
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: '#ffffff',
+              border: `2px solid ${theme.primary}`,
+              mb: 2,
+              cursor: 'pointer',
+              transition: 'transform 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'scale(1.03)'
+              }
+            }}
+            onClick={() => setShowQrModal(true)}
+          >
+            <QRCodeSVG
+              value={generateVCardData()}
+              size={120}
+              bgColor={'#ffffff'}
+              fgColor={theme.primary}
+              level={'H'}
+              includeMargin={false}
+            />
+          </Box>
+          
+          <Typography 
+            variant="body2"
+            sx={{ 
+              fontFamily: 'monospace',
+              letterSpacing: '0.05em',
+              color: theme.primary,
+              fontSize: '0.75rem',
+              textAlign: 'center'
+            }}
+          >
+            Tap to enlarge or download
+          </Typography>
         </Box>
         
         {/* Personal Information Section */}
@@ -3004,6 +3289,26 @@ export default function CardEditor({ isMasterTemplate = false }: { isMasterTempl
           <CardPreview />
         </Grid>
       </Grid>
+      
+      {/* Add schema issue alert */}
+      {showSchemaAlert && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 2 }}
+          onClose={() => setShowSchemaAlert(false)}
+        >
+          Database schema issue detected. You may need to update your database tables.
+          <Button 
+            href="/debug/fix-database" 
+            target="_blank"
+            size="small"
+            variant="outlined"
+            sx={{ ml: 2 }}
+          >
+            Fix Database
+          </Button>
+        </Alert>
+      )}
     </Box>
   );
 } 

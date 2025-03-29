@@ -31,7 +31,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Alert
 } from '@mui/material';
 import MoodIcon from '@mui/icons-material/Mood';
 import UpgradeIcon from '@mui/icons-material/Upgrade';
@@ -41,6 +42,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 import { QRCodeSVG } from 'qrcode.react';
 import { createRoot } from 'react-dom/client';
+import InfoIcon from '@mui/icons-material/Info';
+import LockIcon from '@mui/icons-material/Lock';
 
 interface Subscription {
   id?: string;
@@ -83,6 +86,8 @@ export default function VibesPage() {
   const [downloadProgress, setDownloadProgress] = useState(false);
   const backgroundRef = useRef<HTMLImageElement>(null);
   const qrCodeRef = useRef<HTMLDivElement>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeAction, setUpgradeAction] = useState<string>('');
 
   // Background images - in production, these would be stored in a database or CDN
   const backgroundImages: BackgroundImage[] = Array.from({ length: 21 }, (_, i) => ({
@@ -238,6 +243,14 @@ export default function VibesPage() {
   };
 
   const handleBackgroundSelect = (id: number) => {
+    // Allow viewing backgrounds for all users, but show upgrade modal for free users
+    // when they try to select more than the first 3 backgrounds
+    if (subscription?.plan_id === 'free' && id > 3) {
+      setUpgradeAction('select background');
+      setShowUpgradeModal(true);
+      return;
+    }
+    
     setSelectedBackground(id);
     setImageError(false); // Reset error state when selecting a new background
   };
@@ -255,6 +268,118 @@ export default function VibesPage() {
   };
 
   const handleDownload = () => {
+    // First check if both a background and card are selected
+    if (!selectedBackground || !selectedCard) {
+      alert('Please select both a background and a card before downloading.');
+      return;
+    }
+
+    // Check if user is on free plan
+    if (subscription?.plan_id === 'free') {
+      // Show upgrade modal instead of downloading
+      setUpgradeAction('download');
+      setShowUpgradeModal(true);
+      return;
+    }
+    
+    // Continue with normal download logic for premium users
+    setDownloadDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDownloadDialogOpen(false);
+  };
+
+  const getSelectedCardQrUrl = () => {
+    if (!selectedCard) return generateVCardData(null);
+    
+    const card = userCards.find(c => c.id === selectedCard);
+    return card ? generateVCardData(card.data) : generateVCardData(null);
+  };
+
+  const generateVCardData = (cardData: any) => {
+    if (!cardData) {
+      // Return a basic vCard for demo purposes with simpler format
+      return 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Demo User\r\nTEL:123-456-7890\r\nEMAIL:demo@example.com\r\nORG:Demo Company\r\nEND:VCARD';
+    }
+    
+    // Start vCard - use \r\n for better compatibility
+    let vCard = 'BEGIN:VCARD\r\nVERSION:3.0\r\n';
+    
+    // Add personal information with proper escaping
+    // Name is the most important field for contact recognition
+    if (cardData.personal.name) vCard += `FN:${escapeVCardValue(cardData.personal.name)}\r\n`;
+    
+    // Add structured name if available - this helps with contact recognition
+    if (cardData.personal.name) {
+      const nameParts = cardData.personal.name.split(' ');
+      let lastName = '';
+      let firstName = '';
+      
+      if (nameParts.length === 1) {
+        firstName = nameParts[0];
+      } else if (nameParts.length >= 2) {
+        firstName = nameParts[0];
+        lastName = nameParts[nameParts.length - 1];
+      }
+      
+      vCard += `N:${escapeVCardValue(lastName)};${escapeVCardValue(firstName)};;;\r\n`;
+    }
+    
+    // Add phone number - this is critical for contact recognition
+    if (cardData.personal.phone) vCard += `TEL;TYPE=CELL:${escapeVCardValue(cardData.personal.phone)}\r\n`;
+    
+    // Add email - also important for recognition
+    if (cardData.personal.email) vCard += `EMAIL:${escapeVCardValue(cardData.personal.email)}\r\n`;
+    
+    // Add title
+    if (cardData.personal.title) vCard += `TITLE:${escapeVCardValue(cardData.personal.title)}\r\n`;
+    
+    // Add company information
+    if (cardData.company.name) vCard += `ORG:${escapeVCardValue(cardData.company.name)}\r\n`;
+    
+    // Add address - simplified format
+    if (cardData.company.address) vCard += `ADR:;;${escapeVCardValue(cardData.company.address)};;;;\r\n`;
+    
+    // Add company phone
+    if (cardData.company.phone) vCard += `TEL;TYPE=WORK:${escapeVCardValue(cardData.company.phone)}\r\n`;
+    
+    // Add website - simplified
+    if (cardData.company.website) {
+      let website = cardData.company.website;
+      if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+        website = 'https://' + website;
+      }
+      vCard += `URL:${escapeVCardValue(website)}\r\n`;
+    }
+    
+    // End vCard
+    vCard += 'END:VCARD';
+    
+    return vCard;
+  };
+  
+  // Helper function to escape special characters in vCard values
+  const escapeVCardValue = (value: string): string => {
+    if (!value) return '';
+    // Escape backslashes, commas, semicolons, and newlines as per vCard spec
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;')
+      .replace(/\r\n/g, '\\n')
+      .replace(/\n/g, '\\n');
+  };
+
+  const getBackgroundUrl = () => {
+    if (!selectedBackground) return '/backgrounds/placeholder.jpg';
+    
+    // Use the actual file naming convention in the backgrounds folder
+    return `/backgrounds/${selectedBackground}.jpg`;
+  };
+
+  // Add the handlePerformDownload function for actually performing the download
+  const handlePerformDownload = () => {
     if (!selectedBackground || !selectedCard) {
       alert('Please select both a background and a card before downloading.');
       return;
@@ -380,7 +505,7 @@ export default function VibesPage() {
             document.body.removeChild(downloadLink);
             
             setDownloadProgress(false);
-            setDownloadDialogOpen(true);
+            setDownloadDialogOpen(false);
           } catch (error) {
             console.error('Error creating download:', error);
             alert('Failed to generate the download. Please try a different browser or background image.');
@@ -412,98 +537,6 @@ export default function VibesPage() {
     }, 100); // Small delay to ensure the QR code is rendered
   };
 
-  const handleCloseDialog = () => {
-    setDownloadDialogOpen(false);
-  };
-
-  const getSelectedCardQrUrl = () => {
-    if (!selectedCard) return generateVCardData(null);
-    
-    const card = userCards.find(c => c.id === selectedCard);
-    return card ? generateVCardData(card.data) : generateVCardData(null);
-  };
-
-  const generateVCardData = (cardData: any) => {
-    if (!cardData) {
-      // Return a basic vCard for demo purposes with simpler format
-      return 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Demo User\r\nTEL:123-456-7890\r\nEMAIL:demo@example.com\r\nORG:Demo Company\r\nEND:VCARD';
-    }
-    
-    // Start vCard - use \r\n for better compatibility
-    let vCard = 'BEGIN:VCARD\r\nVERSION:3.0\r\n';
-    
-    // Add personal information with proper escaping
-    // Name is the most important field for contact recognition
-    if (cardData.personal.name) vCard += `FN:${escapeVCardValue(cardData.personal.name)}\r\n`;
-    
-    // Add structured name if available - this helps with contact recognition
-    if (cardData.personal.name) {
-      const nameParts = cardData.personal.name.split(' ');
-      let lastName = '';
-      let firstName = '';
-      
-      if (nameParts.length === 1) {
-        firstName = nameParts[0];
-      } else if (nameParts.length >= 2) {
-        firstName = nameParts[0];
-        lastName = nameParts[nameParts.length - 1];
-      }
-      
-      vCard += `N:${escapeVCardValue(lastName)};${escapeVCardValue(firstName)};;;\r\n`;
-    }
-    
-    // Add phone number - this is critical for contact recognition
-    if (cardData.personal.phone) vCard += `TEL;TYPE=CELL:${escapeVCardValue(cardData.personal.phone)}\r\n`;
-    
-    // Add email - also important for recognition
-    if (cardData.personal.email) vCard += `EMAIL:${escapeVCardValue(cardData.personal.email)}\r\n`;
-    
-    // Add title
-    if (cardData.personal.title) vCard += `TITLE:${escapeVCardValue(cardData.personal.title)}\r\n`;
-    
-    // Add company information
-    if (cardData.company.name) vCard += `ORG:${escapeVCardValue(cardData.company.name)}\r\n`;
-    
-    // Add address - simplified format
-    if (cardData.company.address) vCard += `ADR:;;${escapeVCardValue(cardData.company.address)};;;;\r\n`;
-    
-    // Add company phone
-    if (cardData.company.phone) vCard += `TEL;TYPE=WORK:${escapeVCardValue(cardData.company.phone)}\r\n`;
-    
-    // Add website - simplified
-    if (cardData.company.website) {
-      let website = cardData.company.website;
-      if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
-        website = 'https://' + website;
-      }
-      vCard += `URL:${escapeVCardValue(website)}\r\n`;
-    }
-    
-    // End vCard
-    vCard += 'END:VCARD';
-    
-    return vCard;
-  };
-  
-  // Helper function to escape special characters in vCard values
-  const escapeVCardValue = (value: string): string => {
-    if (!value) return '';
-    // Escape backslashes, commas, semicolons, and newlines as per vCard spec
-    return value
-      .replace(/\\/g, '\\\\')
-      .replace(/,/g, '\\,')
-      .replace(/;/g, '\\;')
-      .replace(/\r\n/g, '\\n')
-      .replace(/\n/g, '\\n');
-  };
-
-  const getBackgroundUrl = () => {
-    if (!selectedBackground) return '/backgrounds/placeholder.jpg';
-    
-    // Use the actual file naming convention in the backgrounds folder
-    return `/backgrounds/${selectedBackground}.jpg`;
-  };
-
   if (!mounted) {
     return null; // Return nothing during server-side rendering
   }
@@ -516,11 +549,9 @@ export default function VibesPage() {
     );
   }
 
-  // For production, we'll use the actual subscription status
-  // But for development, we can override it
-  const needsUpgrade = process.env.NODE_ENV === 'production' 
-    ? subscription?.plan_id === 'free'
-    : false; // Always show the feature in development
+  // For production, we'll still check the subscription status
+  // But instead of completely blocking access, we'll show the interface with upgrade prompts
+  const isFreeUser = subscription?.plan_id === 'free';
 
   return (
     <>
@@ -539,170 +570,81 @@ export default function VibesPage() {
           VIRTUAL VIBES
         </Typography>
         
-        {needsUpgrade ? (
-          <Paper elevation={2} sx={{ p: 4, mt: 4 }}>
-            <Box sx={{ textAlign: 'center', py: 6 }}>
-              <MoodIcon sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
-              <Typography variant="h5" gutterBottom>
-                Virtual Vibes Locked
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                Virtual Vibes is available exclusively with our premium plans. Upgrade to Glow Up to access this feature and more.
-              </Typography>
+        {/* Show feature description and upgrade banner for free users */}
+        {isFreeUser && (
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mb: 4, 
+              borderRadius: 0,
+              '& .MuiAlert-message': {
+                fontFamily: 'monospace',
+                letterSpacing: '0.05em'
+              }
+            }}
+            icon={<InfoIcon fontSize="inherit" />}
+            action={
               <Button 
-                variant="contained" 
-                startIcon={<UpgradeIcon />}
+                color="inherit" 
+                size="small" 
                 onClick={handleUpgrade}
+                startIcon={<UpgradeIcon />}
                 sx={{ 
-                  backgroundColor: '#000000',
-                  color: '#ffffff',
-                  borderRadius: 0,
-                  '&:hover': {
-                    backgroundColor: '#333333'
-                  },
                   fontFamily: 'monospace',
                   letterSpacing: '0.05em'
                 }}
               >
-                UPGRADE TO GLOW UP
+                UPGRADE
               </Button>
-            </Box>
-          </Paper>
-        ) : (
-          <Box>
-            <Typography variant="body1" paragraph sx={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-              Create custom backgrounds with your QR code for virtual meetings. Select a background, add your digital card QR code, and download for use in Zoom, Teams, or other video conferencing platforms.
-            </Typography>
-            
-            <Grid container spacing={4} sx={{ mt: 2 }}>
-              {/* Left Column - Preview */}
-              <Grid item xs={12} md={7}>
-                <Paper elevation={2} sx={{ p: 3, borderRadius: 0, border: '1px solid #000' }}>
-                  <Box sx={{ mb: 3 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          label="Title"
-                          fullWidth
-                          value={title}
-                          onChange={handleTitleChange}
-                          sx={{ 
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: 0,
-                              fontFamily: 'monospace',
-                            }
-                          }}
-                          InputLabelProps={{
-                            sx: { 
-                              fontFamily: 'monospace',
-                              letterSpacing: '0.05em'
-                            }
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth>
-                          <InputLabel id="card-select-label" sx={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-                            Assign to Card
-                          </InputLabel>
-                          <Select
-                            labelId="card-select-label"
-                            value={selectedCard || ''}
-                            onChange={handleCardSelect}
-                            label="Assign to Card"
-                            sx={{ 
-                              borderRadius: 0,
-                              fontFamily: 'monospace',
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderRadius: 0
-                              }
-                            }}
-                          >
-                            {userCards.map(card => (
-                              <MenuItem key={card.id} value={card.id} sx={{ fontFamily: 'monospace' }}>
-                                {card.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                  
-                  {/* Background Preview */}
-                  <Box sx={{ position: 'relative', width: '100%', mb: 3 }}>
-                    {imageError ? (
-                      <Box
-                        sx={{
-                          width: '100%',
-                          height: 0,
-                          paddingBottom: '56.25%', // 16:9 aspect ratio
-                          backgroundColor: '#f5f5f5',
-                          border: '1px solid #000',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          position: 'relative',
-                        }}
-                      >
-                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <ErrorOutlineIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                          <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                            Background image not available
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ) : (
-                      <Box
-                        component="img"
-                        ref={backgroundRef}
-                        src={getBackgroundUrl()}
-                        alt="Background Preview"
-                        onError={handleImageError}
-                        sx={{
-                          width: '100%',
-                          height: 'auto',
-                          aspectRatio: '16/9',
-                          objectFit: 'cover',
-                          border: '1px solid #000',
-                          backgroundColor: '#f5f5f5',
-                        }}
-                      />
-                    )}
-                    
-                    {/* QR Code Overlay */}
-                    <Box
-                      ref={qrCodeRef}
-                      sx={{
-                        position: 'absolute',
-                        top: 20,
-                        right: 20,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        padding: 1.5,
-                        border: '1px solid #000',
-                        maxWidth: '100px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontFamily: 'monospace', fontSize: '0.6rem', textAlign: 'center', fontWeight: 'bold' }}>
-                        SCAN TO SAVE
-                      </Typography>
-                      <QRCodeSVG
-                        value={getSelectedCardQrUrl()}
-                        size={80}
-                        bgColor={'#ffffff'}
-                        fgColor={'#000000'}
-                        level={'H'}
-                        includeMargin={true}
-                        className="qrcode"
-                      />
-                    </Box>
-                  </Box>
-                  
-                  <Tabs
-                    value={activeTab}
+            }
+          >
+            You're previewing Virtual Vibes in demo mode. Upgrade to GLOW UP to unlock all backgrounds and download functionality.
+          </Alert>
+        )}
+        
+        {/* Main content area - shown to all users */}
+        <Box sx={{ mb: 5 }}>
+          <Typography variant="subtitle1" sx={{ mb: 3 }}>
+            Create custom backgrounds with your QR code for virtual meetings. Select a background, add your digital card QR code, and download for use in Zoom, Teams, or other video conferencing platforms.
+          </Typography>
+          
+          <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+            <Grid container spacing={3}>
+              {/* Left column - Editor */}
+              <Grid item xs={12} md={5}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  1. CUSTOMIZE YOUR BACKGROUND
+                </Typography>
+                
+                <TextField
+                  fullWidth
+                  label="Title"
+                  variant="outlined"
+                  value={title}
+                  onChange={handleTitleChange}
+                  margin="normal"
+                  sx={{ mb: 3 }}
+                />
+                
+                <FormControl fullWidth margin="normal" sx={{ mb: 3 }}>
+                  <InputLabel id="card-select-label">Assign to Card</InputLabel>
+                  <Select
+                    labelId="card-select-label"
+                    value={selectedCard || ''}
+                    onChange={handleCardSelect}
+                    label="Assign to Card"
+                  >
+                    {userCards.map((card) => (
+                      <MenuItem key={card.id} value={card.id}>
+                        {card.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <Box sx={{ mb: 3 }}>
+                  <Tabs 
+                    value={activeTab} 
                     onChange={handleTabChange}
                     sx={{
                       borderBottom: 1,
@@ -717,218 +659,289 @@ export default function VibesPage() {
                     <Tab label="Background Images" />
                     <Tab label="Details" />
                   </Tabs>
-                  
-                  <Box sx={{ mt: 3, display: activeTab === 0 ? 'block' : 'none' }}>
-                    <Grid container spacing={2}>
-                      {/* Upload Image Option */}
-                      <Grid item xs={6} sm={4} md={3}>
-                        <Card 
-                          sx={{ 
-                            height: 120, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            border: '1px solid #000',
-                            borderRadius: 0,
-                            backgroundColor: '#f5f5f5'
-                          }}
-                        >
-                          <CardActionArea sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                            <PhotoCameraIcon sx={{ fontSize: 40, mb: 1 }} />
-                            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                              Upload image
-                            </Typography>
-                          </CardActionArea>
-                        </Card>
-                      </Grid>
-                      
-                      {/* Background Options */}
-                      {backgroundImages.map((bg) => (
-                        <Grid item xs={6} sm={4} md={3} key={bg.id}>
-                          <Card 
-                            sx={{ 
-                              height: 120,
-                              border: selectedBackground === bg.id ? '2px solid #ff0000' : '1px solid #000',
-                              borderRadius: 0,
-                              position: 'relative',
-                              overflow: 'hidden'
-                            }}
-                            onClick={() => handleBackgroundSelect(bg.id)}
-                          >
-                            <Badge
-                              badgeContent={bg.id}
-                              color="primary"
-                              sx={{
-                                position: 'absolute',
-                                top: 8,
-                                left: 8,
-                                zIndex: 1,
-                                '& .MuiBadge-badge': {
-                                  fontFamily: 'monospace',
-                                  borderRadius: 0,
-                                  fontSize: '0.75rem',
-                                  minWidth: '24px',
-                                  height: '24px',
-                                }
-                              }}
-                            />
-                            <CardActionArea sx={{ height: '100%' }}>
-                              <Box
-                                component="img"
-                                src={bg.url}
-                                alt={`Background ${bg.id}`}
-                                onError={(e) => {
-                                  // Fallback to a placeholder on error
-                                  (e.target as HTMLImageElement).src = '/backgrounds/placeholder.jpg';
-                                }}
-                                sx={{ 
-                                  height: '100%', 
-                                  width: '100%', 
-                                  objectFit: 'cover',
-                                  backgroundColor: '#f5f5f5'
-                                }}
-                              />
-                            </CardActionArea>
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </Box>
-                  
-                  <Box sx={{ mt: 3, display: activeTab === 1 ? 'block' : 'none' }}>
-                    <Typography variant="body2" paragraph>
-                      Additional settings for your virtual background will appear here.
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button
-                      variant="contained"
-                      startIcon={downloadProgress ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-                      onClick={handleDownload}
-                      disabled={!selectedBackground || !selectedCard || downloadProgress}
-                      sx={{ 
-                        backgroundColor: '#000000',
-                        color: '#ffffff',
-                        borderRadius: 0,
-                        '&:hover': {
-                          backgroundColor: '#333333'
-                        },
-                        fontFamily: 'monospace',
-                        letterSpacing: '0.05em',
-                        py: 1.5,
-                        px: 3
-                      }}
-                    >
-                      {downloadProgress ? 'PROCESSING...' : 'DOWNLOAD BACKGROUND'}
-                    </Button>
-                  </Box>
-                </Paper>
+                </Box>
+                
+                <Button
+                  variant="contained"
+                  onClick={handleDownload}
+                  startIcon={<DownloadIcon />}
+                  fullWidth
+                  disabled={!selectedBackground || !selectedCard}
+                  sx={{ 
+                    mt: 3, 
+                    borderRadius: 0,
+                    py: 1.5,
+                    backgroundColor: '#000000',
+                    color: '#ffffff',
+                    fontFamily: 'monospace',
+                    letterSpacing: '0.05em',
+                    '&:hover': {
+                      backgroundColor: '#333333',
+                    }
+                  }}
+                >
+                  DOWNLOAD BACKGROUND
+                </Button>
               </Grid>
               
-              {/* Right Column - Instructions */}
-              <Grid item xs={12} md={5}>
-                <Paper elevation={2} sx={{ p: 3, borderRadius: 0, border: '1px solid #000' }}>
-                  <Typography variant="h6" gutterBottom sx={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-                    HOW TO USE VIRTUAL VIBES
-                  </Typography>
+              {/* Right column - Preview */}
+              <Grid item xs={12} md={7}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  2. PREVIEW
+                </Typography>
+                
+                <Box 
+                  ref={backgroundRef}
+                  sx={{ 
+                    position: 'relative',
+                    width: '100%',
+                    height: 0,
+                    paddingBottom: '56.25%', // 16:9 aspect ratio
+                    backgroundColor: '#f5f5f5',
+                    border: '1px solid #000000'
+                  }}
+                >
+                  {/* Background Image */}
+                  <Box
+                    component="img"
+                    src={getBackgroundUrl()}
+                    alt="Virtual Meeting Background"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                    onError={() => setImageError(true)}
+                  />
                   
-                  <Divider sx={{ mb: 2 }} />
+                  {/* Title overlay at the bottom */}
+                  {title && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                        color: 'white',
+                        padding: 1.5,
+                        fontFamily: 'monospace',
+                        fontWeight: 'bold',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {title}
+                    </Box>
+                  )}
                   
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                      1. PICK A VIBE
+                  {/* QR Code */}
+                  <Box
+                    ref={qrCodeRef}
+                    sx={{
+                      position: 'absolute',
+                      top: 20,
+                      right: 20,
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      padding: 1.5,
+                      border: '1px solid #000',
+                      maxWidth: '100px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontFamily: 'monospace', fontSize: '0.6rem', textAlign: 'center', fontWeight: 'bold' }}>
+                      SCAN TO SAVE
                     </Typography>
-                    <Typography variant="body2" paragraph>
-                      Choose from our background collection or upload your own pic. Gotta match the aesthetic.
-                    </Typography>
-                    
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                      2. LINK YOUR DIGITAL CARD
-                    </Typography>
-                    <Typography variant="body2" paragraph>
-                      Select which digital biz card to slap on your background as a QR code. Instant flex.
-                    </Typography>
-                    
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                      3. ADJUST THE QR (SOON)
-                    </Typography>
-                    <Typography variant="body2" paragraph>
-                      Soon, you'll be able to move your QR code around. Stay tuned.
-                    </Typography>
-                    
-                    <Typography variant="subtitle1" gutterBottom sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                      4. DOWNLOAD & SHOW OFF
-                    </Typography>
-                    <Typography variant="body2" paragraph>
-                      Save your custom background and use it in Zoom, Teams, Google Meet—wherever you're making moves.
-                    </Typography>
+                    <QRCodeSVG
+                      value={getSelectedCardQrUrl()}
+                      size={80}
+                      bgColor={'#ffffff'}
+                      fgColor={'#000000'}
+                      level={'H'}
+                      includeMargin={true}
+                      className="qrcode"
+                    />
                   </Box>
-                  
-                  <Divider sx={{ mb: 2 }} />
-                  
-                  <Typography variant="subtitle2" gutterBottom sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-                    PRO TIP
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    Tell people in your virtual meetings to scan your QR code and save your contact deets instantly. Networking = leveled up.
-                  </Typography>
-                </Paper>
+                </Box>
               </Grid>
             </Grid>
+          </Paper>
+          
+          {/* Background Image Gallery */}
+          <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Select a background image:
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {backgroundImages.map((bg, index) => (
+                <Grid item xs={6} sm={4} md={3} key={bg.id}>
+                  <Card 
+                    elevation={2} 
+                    sx={{ 
+                      height: 140, 
+                      cursor: 'pointer',
+                      position: 'relative',
+                      border: selectedBackground === bg.id ? '3px solid #000000' : '1px solid #e0e0e0',
+                      opacity: isFreeUser && index > 2 ? 0.7 : 1,
+                    }}
+                    onClick={() => handleBackgroundSelect(bg.id)}
+                  >
+                    {/* Lock overlay for premium backgrounds for free users */}
+                    {isFreeUser && index > 2 && (
+                      <Box 
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                          zIndex: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        <LockIcon sx={{ color: 'white', fontSize: '1.5rem', mb: 0.5 }} />
+                        <Typography variant="caption" sx={{ color: 'white', fontFamily: 'monospace' }}>
+                          PREMIUM
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <CardActionArea sx={{ height: '100%' }}>
+                      <Box
+                        component="img"
+                        src={bg.url}
+                        alt={`Background ${bg.id}`}
+                        onError={(e) => {
+                          // Fallback to a placeholder on error
+                          (e.target as HTMLImageElement).src = '/backgrounds/placeholder.jpg';
+                        }}
+                        sx={{ 
+                          height: '100%', 
+                          width: '100%', 
+                          objectFit: 'cover',
+                          backgroundColor: '#f5f5f5'
+                        }}
+                      />
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           </Box>
-        )}
+          
+          <Box sx={{ mt: 3, display: activeTab === 1 ? 'block' : 'none' }}>
+            <Typography variant="body2" paragraph>
+              Additional settings for your virtual background will appear here.
+            </Typography>
+          </Box>
+        </Box>
         
-        {/* Download Success Dialog */}
-        <Dialog 
-          open={downloadDialogOpen} 
-          onClose={handleCloseDialog}
-          PaperProps={{
-            sx: {
-              borderRadius: 0,
-              border: '1px solid #000',
-            }
-          }}
+        {/* Download Dialog */}
+        <Dialog
+          open={downloadDialogOpen}
+          onClose={() => setDownloadDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
         >
-          <DialogTitle sx={{ 
-            fontFamily: 'monospace', 
-            letterSpacing: '0.05em',
-            borderBottom: '1px solid #000',
-            p: 2
-          }}>
-            DOWNLOAD COMPLETE
-            <IconButton
-              aria-label="close"
-              onClick={handleCloseDialog}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'text.secondary',
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
+          <DialogTitle sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+            DOWNLOAD BACKGROUND
           </DialogTitle>
-          <DialogContent sx={{ p: 3, mt: 1 }}>
-            <Typography variant="body1" sx={{ fontFamily: 'monospace', mb: 2 }}>
-              Your background with a QR code is ready to flex.
+          <DialogContent dividers>
+            <Typography variant="body1" paragraph>
+              Your custom background is ready to download. Click the button below to get your image file.
             </Typography>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-              Now go slap this bad boy on Zoom, Teams, or wherever you video chat. You're officially high-tech.
+            <Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 2 }}>
+              How to use this background:
             </Typography>
+            <ol>
+              <li>Download the image</li>
+              <li>Open your video conference app (Zoom, Teams, etc.)</li>
+              <li>Go to settings and select "Virtual Background"</li>
+              <li>Upload or select your custom background</li>
+            </ol>
           </DialogContent>
-          <DialogActions sx={{ p: 2, borderTop: '1px solid #eee' }}>
+          <DialogActions>
             <Button 
-              onClick={handleCloseDialog} 
+              onClick={() => setDownloadDialogOpen(false)}
+              sx={{ fontFamily: 'monospace' }}
+            >
+              CANCEL
+            </Button>
+            <Button 
+              variant="contained"
+              onClick={handlePerformDownload}
+              startIcon={<DownloadIcon />}
+              disabled={downloadProgress}
               sx={{ 
                 fontFamily: 'monospace',
-                letterSpacing: '0.05em',
-                color: '#000',
-                borderRadius: 0
+                borderRadius: 0,
+                backgroundColor: '#000000',
+                '&:hover': {
+                  backgroundColor: '#333333'
+                }
               }}
             >
-              CLOSE
+              {downloadProgress ? 'PROCESSING...' : 'DOWNLOAD NOW'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Upgrade Modal */}
+        <Dialog
+          open={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+            UNLOCK PREMIUM FEATURE
+          </DialogTitle>
+          <DialogContent dividers>
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <LockIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Premium Feature
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                {upgradeAction === 'download' 
+                  ? 'Downloading custom backgrounds is available exclusively with our premium plans.' 
+                  : 'Access to our full library of professional backgrounds is available with our premium plans.'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, fontStyle: 'italic' }}>
+                Upgrade to GLOW UP to unlock all Virtual Vibes features, plus multiple cards, advanced analytics, and more!
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setShowUpgradeModal(false)}
+              sx={{ fontFamily: 'monospace' }}
+            >
+              MAYBE LATER
+            </Button>
+            <Button 
+              variant="contained"
+              onClick={handleUpgrade}
+              startIcon={<UpgradeIcon />}
+              sx={{ 
+                fontFamily: 'monospace',
+                borderRadius: 0,
+                backgroundColor: '#000000',
+                '&:hover': {
+                  backgroundColor: '#333333'
+                }
+              }}
+            >
+              UPGRADE NOW
             </Button>
           </DialogActions>
         </Dialog>

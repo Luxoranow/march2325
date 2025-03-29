@@ -339,7 +339,7 @@ export default function SignInForm() {
               <Link
                 component="button"
                 variant="caption"
-                onClick={() => console.log('Forgot password')}
+                onClick={() => router.push('/reset-password')}
                 sx={{ 
                   color: 'white',
                   textDecoration: 'none',

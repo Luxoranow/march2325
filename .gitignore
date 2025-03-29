@@ -16,6 +16,8 @@
 # misc
 .DS_Store
 *.pem
+server_log.txt
+*.log
 
 # debug
 npm-debug.log*
@@ -30,3 +32,25 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# backup directories
+/03.22.25/
+/march2325/
+**/backup/
+
+# Certificates and keys
+*.cert
+*.key
+*.pem
+*.p12
+
+# Google credentials
+*credentials*.json
+
+# Other
+.idea/
+.vscode/

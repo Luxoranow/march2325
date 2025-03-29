@@ -121,13 +121,31 @@ export default function CardView() {
           return;
         }
         
+        // Ensure data has the correct structure
+        if (!data.data || typeof data.data !== 'object') {
+          console.error('Card data has invalid structure');
+          setError('Invalid card data');
+          setLoading(false);
+          return;
+        }
+        
         // Set dark mode based on card theme
-        if (data.data && typeof data.data === 'object' && 'theme' in data.data) {
+        if ('theme' in data.data) {
           setDarkMode((data.data as CardData).theme === 'dark');
         }
         
+        // Convert to BusinessCard with proper type validation
+        const cardData: BusinessCard = {
+          id: data.id as string,
+          user_id: data.user_id as string,
+          name: data.name as string | undefined,
+          data: data.data as CardData,
+          created_at: data.created_at as string,
+          updated_at: data.updated_at as string
+        };
+        
         // Set card data
-        setCardData(data as BusinessCard);
+        setCardData(cardData);
         setTrackerReady(true);
         
       } catch (err) {
@@ -149,62 +167,136 @@ export default function CardView() {
     
     // Track download event
     if (trackerReady && cardId) {
+      // Use optional chaining and fallbacks to safely access properties
+      const cardName = cardData.name || 
+        (cardData && typeof cardData === 'object' && 'data' in cardData && 
+         cardData.data && typeof cardData.data === 'object' && 'personal' in cardData.data && 
+         cardData.data.personal && 'name' in cardData.data.personal ? 
+         cardData.data.personal.name : 'Unknown Card');
+      
       window.dispatchEvent(new CustomEvent('track_card_interaction', {
         detail: {
           cardId,
           actionType: 'download_vcard',
-          metadata: {
-            cardName: cardData.name || cardData.data.personal.name
-          }
+          metadata: { cardName }
         }
       }));
     }
     
-    // Create vCard data
-    const personal = cardData.data.personal;
-    const company = cardData.data.company;
-    
-    let vCardData = 'BEGIN:VCARD\nVERSION:3.0\n';
-    vCardData += `FN:${personal.name}\n`;
-    
-    if (personal.title) {
-      vCardData += `TITLE:${personal.title}\n`;
+    // Ensure we have the correct card data structure before proceeding
+    if (!cardData || 
+        typeof cardData !== 'object' || 
+        !('data' in cardData) || 
+        !cardData.data || 
+        typeof cardData.data !== 'object' || 
+        !('personal' in cardData.data)) {
+      console.error('Card data is not in the expected format');
+      return;
     }
     
-    if (company?.name) {
-      vCardData += `ORG:${company.name}\n`;
+    // Access the data with the correct structure guaranteed
+    const personal = cardData.data.personal;
+    const company = cardData.data.company;
+    const social = cardData.data.social;
+    const resources = cardData.data.resources || [];
+    const customFields = cardData.data.customFields || {};
+    
+    // Start vCard with proper line breaks for different OS compatibility
+    let vCardData = 'BEGIN:VCARD\r\nVERSION:3.0\r\n';
+    
+    // Add personal information
+    if (personal.name) {
+      // Add full name
+      vCardData += `FN:${escapeVCardValue(personal.name)}\r\n`;
+      
+      // Add structured name - try to split into components
+      // Format: Last;First;Middle;Prefix;Suffix
+      const nameParts = personal.name.split(' ');
+      let firstName = '';
+      let lastName = '';
+      
+      if (nameParts.length === 1) {
+        // Only one name provided
+        firstName = nameParts[0];
+      } else if (nameParts.length === 2) {
+        // Likely first and last name
+        firstName = nameParts[0];
+        lastName = nameParts[1];
+      } else if (nameParts.length > 2) {
+        // Multiple parts - assume first name is first part, last name is last part
+        firstName = nameParts[0];
+        lastName = nameParts[nameParts.length - 1];
+      }
+      
+      vCardData += `N:${escapeVCardValue(lastName)};${escapeVCardValue(firstName)};;;\r\n`;
+    }
+    
+    if (personal.title) {
+      vCardData += `TITLE:${escapeVCardValue(personal.title)}\r\n`;
     }
     
     if (personal.email) {
-      vCardData += `EMAIL:${personal.email}\n`;
+      vCardData += `EMAIL:${escapeVCardValue(personal.email)}\r\n`;
     }
     
     if (personal.phone) {
-      vCardData += `TEL:${personal.phone}\n`;
+      vCardData += `TEL;TYPE=CELL:${escapeVCardValue(personal.phone)}\r\n`;
     }
     
     if (personal.location) {
-      vCardData += `ADR:;;${personal.location};;;\n`;
+      vCardData += `ADR;TYPE=HOME:;;${escapeVCardValue(personal.location)};;;;\r\n`;
+    }
+    
+    // Add company information
+    if (company?.name) {
+      vCardData += `ORG:${escapeVCardValue(company.name)}\r\n`;
     }
     
     if (company?.website) {
-      vCardData += `URL:${company.website}\n`;
+      // Ensure website URL has a protocol
+      let websiteUrl = company.website;
+      if (websiteUrl && !websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+        websiteUrl = 'https://' + websiteUrl;
+      }
+      vCardData += `URL:${escapeVCardValue(websiteUrl)}\r\n`;
     }
     
-    if (personal.bio) {
-      vCardData += `NOTE:${personal.bio}\n`;
-    }
-    
-    // Add social links as URLs
-    const social = cardData.data.social;
+    // Add social media as URLs
     if (social) {
-      if (social.linkedin) vCardData += `URL;type=LINKEDIN:${social.linkedin}\n`;
-      if (social.twitter) vCardData += `URL;type=TWITTER:${social.twitter}\n`;
-      if (social.instagram) vCardData += `URL;type=INSTAGRAM:${social.instagram}\n`;
-      if (social.github) vCardData += `URL;type=GITHUB:${social.github}\n`;
-      if (social.facebook) vCardData += `URL;type=FACEBOOK:${social.facebook}\n`;
+      if (social.linkedin) vCardData += `URL;TYPE=LINKEDIN:${escapeVCardValue(social.linkedin)}\r\n`;
+      if (social.twitter) vCardData += `URL;TYPE=TWITTER:${escapeVCardValue(social.twitter)}\r\n`;
+      if (social.instagram) vCardData += `URL;TYPE=INSTAGRAM:${escapeVCardValue(social.instagram)}\r\n`;
+      if (social.github) vCardData += `URL;TYPE=GITHUB:${escapeVCardValue(social.github)}\r\n`;
+      if (social.facebook) vCardData += `URL;TYPE=FACEBOOK:${escapeVCardValue(social.facebook)}\r\n`;
     }
     
+    // Add resources as a note
+    if (resources && resources.length > 0) {
+      let resourcesNote = 'Resources:\\n';
+      resources.forEach(resource => {
+        resourcesNote += `${resource.title}: ${resource.url}\\n`;
+        if (resource.description) {
+          resourcesNote += `Description: ${resource.description}\\n`;
+        }
+      });
+      vCardData += `NOTE:${escapeVCardValue(resourcesNote)}\r\n`;
+    }
+    
+    // Add custom fields
+    if (customFields && Object.keys(customFields).length > 0) {
+      let customNote = 'Additional Information:\\n';
+      Object.entries(customFields).forEach(([key, value]) => {
+        customNote += `${key}: ${value}\\n`;
+      });
+      if (personal.bio) {
+        customNote += `\\nBio: ${personal.bio}\\n`;
+      }
+      vCardData += `NOTE:${escapeVCardValue(customNote)}\r\n`;
+    } else if (personal.bio) {
+      vCardData += `NOTE:${escapeVCardValue(personal.bio)}\r\n`;
+    }
+    
+    // End vCard
     vCardData += 'END:VCARD';
     
     // Create a blob and download it
@@ -217,6 +309,18 @@ export default function CardView() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+  
+  // Helper function to escape special characters in vCard values
+  const escapeVCardValue = (value: string): string => {
+    if (!value) return '';
+    // Escape backslashes, commas, semicolons, and newlines as per vCard spec
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;')
+      .replace(/\r\n/g, '\\n')
+      .replace(/\n/g, '\\n');
   };
   
   // Track social link clicks

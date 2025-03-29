@@ -6,15 +6,19 @@ A digital business card platform built with Next.js and Supabase.
 
 - Digital business card creation and management
 - QR code generation for easy sharing
+- vCard export for saving contacts to your phone
+- Apple Wallet and Google Wallet integration
+- Subscription management with Stripe
 - Analytics tracking for card views and interactions
 - Team management features
-- Subscription management
+- Virtual card backgrounds (premium feature)
 
 ## Tech Stack
 
 - Next.js 15.x
 - Supabase (Authentication & Database)
 - Material UI
+- Stripe for payments
 - TypeScript
 
 ## Environment Variables
@@ -22,9 +26,25 @@ A digital business card platform built with Next.js and Supabase.
 This application requires the following environment variables:
 
 ```
+# Required
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_SITE_URL=your-deployed-site-url
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# For Stripe integration
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+
+# For Apple Wallet Pass (optional)
+APPLE_PASS_TYPE_IDENTIFIER=pass.com.yourcompany.luxora
+APPLE_TEAM_IDENTIFIER=your-team-id
+APPLE_PASS_PHRASE=your-pass-signing-certificate-passphrase
+
+# For Google Wallet Pass (optional)
+GOOGLE_PAY_ISSUER_ID=your-issuer-id
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
 ```
 
 ## Development
@@ -39,10 +59,29 @@ NEXT_PUBLIC_SITE_URL=your-deployed-site-url
    ```
    npm run dev
    ```
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Deployment on Render
+## Database Setup
 
-### Manual Deployment
+1. Go to [Supabase](https://supabase.com) and create a new project
+2. Execute the SQL scripts in the following order:
+   - `setup_supabase.sql` - Creates base tables and functions
+   - `analytics_schema.sql` - Sets up analytics tracking
+   - `add_is_template_column.sql` - Updates card schema
+   - `migrations/subscription_schema_update.sql` - Sets up subscription tables and logging
+
+## Deployment
+
+### Deploying on Vercel
+
+1. Create a new project on [Vercel](https://vercel.com)
+2. Connect your GitHub repository
+3. Configure environment variables in the Vercel dashboard:
+   - Add all required environment variables as listed above
+4. Deploy with default settings
+5. Ensure you set up the webhooks for Stripe if you're using subscription features
+
+### Deploying on Render
 
 1. Create a new Web Service on Render
 2. Connect your GitHub repository
@@ -54,53 +93,15 @@ NEXT_PUBLIC_SITE_URL=your-deployed-site-url
 4. Add the required environment variables
 5. Click "Create Web Service"
 
-### Auto-Deployment
+## Wallet Pass Integration
 
-Any pushes to the main branch will automatically trigger a new deployment if you've connected your GitHub repository to Render.
-
-## Setup Instructions
-
-### 1. Supabase Setup
-
-1. Go to [Supabase](https://supabase.com) and sign in or create an account
-2. Create a new project
-3. Once your project is created, go to the SQL Editor
-4. Copy the contents of `setup_supabase.sql` from this project and run it in the SQL Editor
-5. This will create the necessary tables and permissions for the app to work
-
-### 2. Environment Variables
-
-1. Make sure your `.env.local` file has the following variables:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   ```
-2. Replace the values with your actual Supabase URL and anon key
-
-### 3. Running the Application
-
-1. Install dependencies:
-   ```
-   npm install
-   ```
-
-2. Run the development server:
-   ```
-   npm run dev
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+To set up wallet pass integration, follow the detailed instructions in [WALLET_PASS_SETUP.md](./WALLET_PASS_SETUP.md).
 
 ## Troubleshooting
 
 ### Card Saving Issues
 
-If you're having trouble saving cards, check the following:
-
-1. Make sure you've run the SQL setup script in your Supabase project
-2. Check that your environment variables are correctly set
-3. Look at the browser console for detailed error messages
-4. Verify that the Row Level Security (RLS) policies are correctly set up in Supabase
+If you're having trouble saving cards, follow the troubleshooting steps in [CARD_SAVING_GUIDE.md](./CARD_SAVING_GUIDE.md).
 
 ### Authentication Issues
 
@@ -108,14 +109,29 @@ If you're having trouble with authentication:
 
 1. Make sure you've set up authentication in your Supabase project
 2. Check that you're properly signed in before trying to save cards
-3. For testing, the app uses a default test user ID: `00000000-0000-0000-0000-000000000000`
+3. Review the browser console for detailed error messages
 
-## Features
+### Subscription Management
 
-- Create and edit digital business cards
-- Customize with different themes
-- Add social media links
-- Add messaging platform contacts
-- Create custom call-to-action buttons
-- Generate QR codes for your cards
-- Share via email or text message
+For subscription-related issues:
+
+1. Check that your Stripe API keys are correct
+2. Verify that your webhook endpoint is properly set up in Stripe
+3. Check the subscription logs in Supabase (subscription_logs table)
+
+## Analytics
+
+Luxora includes detailed analytics for card views and interactions. You can access these in the dashboard, or query the database directly for more detailed analysis.
+
+## Project Structure
+
+- `/app` - Next.js app router components and pages
+- `/components` - Reusable UI components
+- `/lib` - Utility functions and helpers
+- `/public` - Static files
+- `/migrations` - Database migration scripts
+- `/docs` - Documentation files
+
+## License
+
+This project is proprietary and confidential.
