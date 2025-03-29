@@ -55,7 +55,7 @@ const sections = [
 ];
 
 // User menu options
-const userMenuOptions = ['PROFILE', 'ACCOUNT'];
+const userMenuOptions = [];
 
 const drawerWidth = 240;
 
@@ -68,6 +68,44 @@ export default function DashboardNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [userInitials, setUserInitials] = useState<string>('');
+
+  // Fetch user info on component mount
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Get user initials from email or metadata
+          let initials = '';
+          
+          // Try to get initials from user metadata (if name exists)
+          if (user.user_metadata?.name) {
+            const nameParts = user.user_metadata.name.split(' ');
+            // Get first letter of first name and first letter of last name (if available)
+            initials = nameParts[0][0].toUpperCase();
+            if (nameParts.length > 1) {
+              initials += nameParts[nameParts.length - 1][0].toUpperCase();
+            }
+          } else if (user.email) {
+            // Otherwise use first letter of email
+            initials = user.email[0].toUpperCase();
+          } else {
+            // Fallback to "U" if no email or name available
+            initials = 'U';
+          }
+          
+          setUserInitials(initials);
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error);
+        setUserInitials('U'); // Fallback to "U" if error
+      }
+    };
+    
+    fetchUserInfo();
+  }, []);
 
   // Update time every minute
   useEffect(() => {
@@ -302,7 +340,7 @@ export default function DashboardNavbar() {
             </Box>
 
             <Box sx={{ flexGrow: 0 }}>
-              <Tooltip title="Open settings">
+              <Tooltip title="Logout">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                   <Avatar 
                     alt="User" 
@@ -315,7 +353,7 @@ export default function DashboardNavbar() {
                       fontWeight: 'bold'
                     }}
                   >
-                    U
+                    {userInitials}
                   </Avatar>
                 </IconButton>
               </Tooltip>
@@ -342,28 +380,6 @@ export default function DashboardNavbar() {
                 open={Boolean(anchorElUser)}
                 onClose={handleCloseUserMenu}
               >
-                {userMenuOptions.map((option) => (
-                  <MenuItem 
-                    key={option} 
-                    onClick={() => handleUserMenuAction(option)}
-                    sx={{
-                      '&:hover': {
-                        backgroundColor: '#f0f0f0'
-                      }
-                    }}
-                  >
-                    <Typography 
-                      textAlign="center"
-                      sx={{
-                        fontSize: '0.85rem',
-                        letterSpacing: '0.1em'
-                      }}
-                    >
-                      {option}
-                    </Typography>
-                  </MenuItem>
-                ))}
-                <Divider sx={{ my: 1 }} />
                 <MenuItem 
                   onClick={handleLogout}
                   sx={{
