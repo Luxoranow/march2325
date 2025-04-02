@@ -44,6 +44,17 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error generating Apple Wallet pass:', error);
     
+    // Provide a more specific error message for certificate issues
+    if (error.message && error.message.includes('Certificates directory not found')) {
+      return NextResponse.json(
+        { 
+          error: 'Apple Wallet pass generation not configured', 
+          details: 'The server is not yet configured to generate Apple Wallet passes. Please contact support for more information.'
+        },
+        { status: 503 } // Service Unavailable
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to generate Apple Wallet pass', details: error.message },
       { status: 500 }

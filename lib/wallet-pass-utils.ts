@@ -37,7 +37,23 @@ export async function generateAppleWalletPass(passData: PassData): Promise<Buffe
   // We will need to create these certificate files after obtaining them from Apple
   const certDirectory = path.resolve(process.cwd(), 'certificates');
   
+  // Check if certificates directory exists
+  if (!fs.existsSync(certDirectory)) {
+    console.warn('Certificates directory not found. Unable to generate Apple Wallet pass.');
+    throw new Error('Certificates directory not found. Please refer to WALLET_PASS_SETUP.md for setup instructions.');
+  }
+  
   try {
+    // Check if all required certificate files exist
+    const requiredFiles = ['model', 'wwdr.pem', 'signerCert.pem', 'signerKey.pem'];
+    for (const file of requiredFiles) {
+      const filePath = path.resolve(certDirectory, file);
+      if (!fs.existsSync(filePath)) {
+        console.warn(`Required certificate file ${file} not found.`);
+        throw new Error(`Required certificate file ${file} not found. Please refer to WALLET_PASS_SETUP.md for setup instructions.`);
+      }
+    }
+    
     // Create the pass
     const pass = await PassKit.PKPass.from({
       model: path.resolve(certDirectory, 'model'),
