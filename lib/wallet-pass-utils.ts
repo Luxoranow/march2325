@@ -5,7 +5,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import { createPass } from 'passkit-generator';
+import * as PassKit from 'passkit-generator';
 import { GoogleAuth } from 'google-auth-library';
 import type { JWTInput } from 'google-auth-library';
 
@@ -39,7 +39,7 @@ export async function generateAppleWalletPass(passData: PassData): Promise<Buffe
   
   try {
     // Create the pass
-    const pass = await createPass({
+    const pass = await PassKit.PKPass.from({
       model: path.resolve(certDirectory, 'model'),
       certificates: {
         wwdr: fs.readFileSync(path.resolve(certDirectory, 'wwdr.pem')),
