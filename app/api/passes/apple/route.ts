@@ -32,15 +32,38 @@ export async function POST(request: NextRequest) {
     console.log('Generating Apple Wallet pass for:', passData.name);
     const passBuffer = await generateAppleWalletPass(passData);
     
-    // Return the pass file
-    return new NextResponse(passBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/vnd.apple.pkpass',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(passData.name.replace(/\s+/g, '-').toLowerCase())}-business-card.pkpass"`,
-        'Content-Length': passBuffer.length.toString()
-      }
-    });
+    // Check if this is a mock pass by looking at its content (since it's JSON)
+    let isMockPass = false;
+    try {
+      const mockCheck = JSON.parse(passBuffer.toString());
+      isMockPass = mockCheck.format === 'mock';
+    } catch (e) {
+      // Not JSON, so it's a real pass
+      isMockPass = false;
+    }
+    
+    if (isMockPass) {
+      // If it's a mock pass, return a JSON response
+      return NextResponse.json(
+        JSON.parse(passBuffer.toString()),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+    } else {
+      // Return the real pass file
+      return new NextResponse(passBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.apple.pkpass',
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(passData.name.replace(/\s+/g, '-').toLowerCase())}-business-card.pkpass"`,
+          'Content-Length': passBuffer.length.toString()
+        }
+      });
+    }
   } catch (error: any) {
     console.error('Error generating Apple Wallet pass:', error);
     

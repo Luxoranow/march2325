@@ -35,14 +35,22 @@ export async function POST(request: NextRequest) {
     // Return the JWT for the client to use with Google Pay API
     return NextResponse.json({
       jwt,
-      saveUrl: `https://pay.google.com/gp/v/save/${jwt}`
+      saveUrl: `https://pay.google.com/gp/v/save/${jwt}`,
+      isMockImplementation: jwt.includes('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9'),
+      message: jwt.includes('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9') 
+        ? 'This is a mock Google Wallet pass. For production use, proper Google credentials are required.' 
+        : undefined
     });
   } catch (error: any) {
     console.error('Error generating Google Wallet pass:', error);
     
     return NextResponse.json(
-      { error: 'Failed to generate Google Wallet pass', details: error.message },
-      { status: 500 }
+      { 
+        error: 'Failed to generate Google Wallet pass', 
+        details: error.message,
+        message: 'Google Wallet pass generation requires proper configuration. See documentation for setup instructions.'
+      },
+      { status: 503 } // Service Unavailable
     );
   }
 } 

@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Wallet pass not supported on this device',
-          supportedDevices: 'iOS devices (Apple Wallet) and Android devices (Google Wallet)'
+          supportedDevices: 'iOS devices (Apple Wallet) and Android devices (Google Wallet)',
+          message: 'Your current device or browser is not recognized as compatible with digital wallet passes.',
+          walletType: walletType 
         },
         { status: 400 }
       );
