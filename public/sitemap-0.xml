@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
-<url><loc>https://luxora.io/cookies</loc><lastmod>2025-03-18T00:22:31.289Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/contact/digital-pigeon</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/dashboard</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/features</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/fine-print</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/login</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/pricing</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/social</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/signup</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/privacy</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/signature-touch</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/terms</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>https://luxora.io/magic-happens</loc><lastmod>2025-03-18T00:22:31.290Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/cookies</loc><lastmod>2025-04-02T02:07:28.275Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/contact/digital-pigeon</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/debug/card-save</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/debug/fix-database</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/features</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/fine-print</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/login</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/debug/env</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/magic-happens</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/pricing</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/privacy</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/terms</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/signature-touch</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/debug</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/social</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/signup</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/dashboard</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>https://luxora.io/reset-password</loc><lastmod>2025-04-02T02:07:28.276Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
 </urlset>
