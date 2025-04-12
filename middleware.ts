@@ -25,6 +25,30 @@ export function middleware(request: NextRequest) {
     );
   }
   
+  // Detect Safari and potential redirect loops
+  const userAgent = request.headers.get('user-agent') || '';
+  const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
+  
+  // Check if we're on the dashboard path and need to handle potential Safari redirect loop
+  if (isSafari && 
+      request.nextUrl.pathname === '/dashboard' && 
+      request.nextUrl.searchParams.get('safari_fix') !== 'true') {
+    
+    // Add a cache busting parameter for Safari
+    const safariFixUrl = new URL(request.url);
+    safariFixUrl.searchParams.set('safari_fix', 'true');
+    
+    // Send a 307 temporary redirect with cache control headers
+    return NextResponse.redirect(safariFixUrl, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+      status: 307
+    });
+  }
+  
   // Clone the response
   const response = NextResponse.next();
   
@@ -38,6 +62,20 @@ export function middleware(request: NextRequest) {
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co https://api.stripe.com; frame-src https://js.stripe.com;",
   };
+  
+  // Add additional headers for auth pages to prevent caching
+  if (request.nextUrl.pathname === '/login' || 
+      request.nextUrl.pathname === '/signup' || 
+      request.nextUrl.pathname === '/dashboard' ||
+      request.nextUrl.pathname.startsWith('/dashboard/')) {
+    
+    Object.assign(securityHeaders, {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+  }
   
   // Add the headers to the response
   Object.entries(securityHeaders).forEach(([key, value]) => {

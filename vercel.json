@@ -4,7 +4,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_SITE_URL": "https://luxora.vercel.app"
+    "NEXT_PUBLIC_SITE_URL": "https://www.luxoranow.com"
   },
   "headers": [
     {
@@ -52,13 +52,7 @@
       ]
     }
   ],
-  "redirects": [
-    {
-      "source": "/dashboard",
-      "destination": "/dashboard",
-      "permanent": true
-    }
-  ],
+  "redirects": [],
   "github": {
     "silent": true
   }

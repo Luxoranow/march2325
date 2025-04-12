@@ -33,11 +33,37 @@ export default function SignInForm() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const redirect = urlParams.get('redirect');
+      const fresh = urlParams.get('fresh');
+      
       if (redirect) {
         setRedirectPath(`/${redirect}`);
       }
+      
+      // If we have a fresh=true parameter, it means we're coming from a potential redirect loop
+      if (fresh === 'true') {
+        console.log('Fresh login detected, clearing local storage and cookies');
+        // Clear localStorage
+        localStorage.clear();
+        
+        // Clear cookies related to authentication
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.trim().split('=');
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        });
+        
+        // Try to sign out in case there's a corrupted session
+        supabase.auth.signOut().catch(e => console.error('Error during signout:', e));
+      }
+      
+      // Check if there's an existing session already
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (data.session && !error) {
+          console.log('User already has an active session, redirecting to dashboard');
+          router.push('/dashboard');
+        }
+      });
     }
-  }, []);
+  }, [router]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

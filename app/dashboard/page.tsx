@@ -84,13 +84,55 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        console.log('Checking authentication status...');
         const { data: { user }, error } = await supabase.auth.getUser();
         
-        if (error || !user) {
+        if (error) {
+          console.error('Authentication error:', error);
+          
+          // Check if we're in a potential redirect loop
+          if (typeof window !== 'undefined') {
+            // Add retry count to localStorage to detect loops
+            const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0');
+            console.log('Current redirect count:', redirectCount);
+            
+            if (redirectCount > 2) {
+              console.error('Detected potential redirect loop, clearing auth state and redirect count');
+              // Clear any problematic state
+              localStorage.removeItem('redirect_count');
+              localStorage.removeItem('luxora_redirect_after_login');
+              
+              // Try clearing any problematic cookies
+              document.cookie.split(';').forEach(cookie => {
+                const [name] = cookie.trim().split('=');
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              });
+              
+              // Force a full page reload to clear everything
+              window.location.href = '/login?fresh=true';
+              return;
+            }
+            
+            // Increment redirect count
+            localStorage.setItem('redirect_count', (redirectCount + 1).toString());
+          }
+          
           router.push('/login');
           return;
         }
         
+        // Clear redirect count on successful authentication
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('redirect_count');
+        }
+        
+        if (!user) {
+          console.warn('No authenticated user found');
+          router.push('/login');
+          return;
+        }
+        
+        console.log('User authenticated:', user.id);
         setUser(user);
         
         // Fetch user's cards
